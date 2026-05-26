@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token Optimizer</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --orange: #d29922;
+  --user-bubble: #1f3a5f;
+  --ai-bubble: #1c2333;
+  --radius: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- Header --- */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+header h1 span { color: var(--accent); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.provider-badge {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.provider-badge .name { color: var(--accent); font-weight: 600; }
+
+.settings-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.settings-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* --- Main Layout --- */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* --- Chat Panel --- */
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  line-height: 1.6;
+  font-size: 14px;
+  word-wrap: break-word;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: var(--user-bubble);
+  border: 1px solid #2d4a7a;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: var(--ai-bubble);
+  border: 1px solid var(--border);
+}
+
+.message.status {
+  align-self: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 13px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message.status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.message.error {
+  align-self: center;
+  color: var(--red);
+  font-size: 13px;
+}
+
+.message pre {
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+}
+
+.message code {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+}
+
+.message :not(pre) > code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.message p { margin: 4px 0; }
+.message ul, .message ol { margin: 4px 0; padding-left: 20px; }
+.message h1, .message h2, .message h3 { margin: 8px 0 4px; }
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px;
+}
+
+.welcome h2 { font-size: 24px; color: var(--text); margin-bottom: 12px; }
+.welcome p { max-width: 500px; line-height: 1.6; }
+
+.pipeline-visual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  font-size: 13px;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+}
+
+.pipeline-step {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.pipeline-step::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 25%, rgba(88,166,255,0.35) 50%, transparent 75%);
+  transform: translateX(-130%);
+  opacity: 0;
+}
+
+.pipeline-step.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(88,166,255,0.25), 0 8px 20px rgba(0,0,0,0.25);
+  transform: translateY(-2px);
+}
+
+.pipeline-step.active::after {
+  opacity: 1;
+  animation: stepSweep 1.1s ease;
+}
+
+.pipeline-arrow {
+  color: var(--accent);
+  animation: arrowPulse 1s ease-in-out infinite;
+}
+
+@keyframes stepSweep {
+  from { transform: translateX(-130%); }
+  to { transform: translateX(130%); }
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.35; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(3px); }
+}
+
+/* --- Input Area --- */
+.input-area {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.file-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: 0;
+}
+
+.file-chip {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.file-chip .remove {
+  cursor: pointer;
+  color: var(--red);
+  font-weight: bold;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.input-row textarea {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  min-height: 44px;
+  max-height: 150px;
+  line-height: 1.5;
+}
+
+.input-row textarea:focus { outline: none; border-color: var(--accent); }
+.input-row textarea::placeholder { color: var(--text-muted); }
+
+.input-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 10px 14px;
+}
+
+.btn-secondary:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* --- Stats Panel --- */
+.stats-panel {
+  width: 300px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  padding: 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.stats-panel h3 {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-label { color: var(--text-muted); }
+.stat-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat-value.savings { color: var(--green); }
+.stat-value.tokens { color: var(--accent); }
+
+.savings-bar {
+  margin-top: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 24px;
+  position: relative;
+}
+
+.savings-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--accent));
+  transition: width 0.5s ease;
+  border-radius: 6px;
+}
+
+.savings-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pipeline-stats { margin-top: 20px; }
+
+.pipeline-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.pipeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pipeline-stat .label { flex: 1; color: var(--text-muted); }
+.pipeline-stat .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.rtk-badge, .caveman-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 12px;
+}
+
+.rtk-badge { background: #1a3a2a; color: var(--green); border: 1px solid #2a5a3a; }
+.caveman-badge { background: #3a2a1a; color: var(--orange); border: 1px solid #5a3a2a; }
+
+.tool-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+.no-stats {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 0;
+  line-height: 1.6;
+}
+
+/* --- Settings Modal --- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.modal h2 { font-size: 18px; margin-bottom: 20px; }
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.form-group select:focus,
+.form-group input:focus { outline: none; border-color: var(--accent); }
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row .form-group { flex: 1; }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.toggle-row label { margin: 0; }
+
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  bottom: 2px;
+  left: 2px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: #fff; }
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.section-divider {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin: 20px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .main-layout { flex-direction: column; }
+  .stats-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 200px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/lightning.svg" class="header-logo" alt="Logo" style="filter:invert(0.7);width:36px;height:36px;margin-right:10px;vertical-align:middle;">
+    Token Optimizer
+  </h1>
+  <div class="header-right">
+    <a href="https://github.com/rahulchoudhari/ctxpress" target="_blank" title="GitHub Repository" style="color:var(--accent);text-decoration:none;font-size:20px;display:flex;align-items:center;gap:6px;">
+      <i class="fa-brands fa-github"></i>
+      <span style="font-size:15px;font-weight:600;">GitHub</span>
+    </a>
+    <div class="provider-badge" id="providerBadge">
+      <i class="fa-solid fa-robot"></i>
+      <span class="name" id="providerName">Loading...</span>
+    </div>
+    <button class="settings-btn" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Settings</button>
+  </div>
+</header>
+
+<div class="main-layout">
+  <!-- Chat Panel -->
+  <div class="chat-panel">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <h2>Token Optimizer</h2>
+        <p>Reduce LLM token costs by filtering and compressing context before sending to your AI provider.</p>
+        <div class="pipeline-visual">
+          <span class="pipeline-step"><i class="fa-solid fa-user"></i> Your Request</span>
+          <span class="pipeline-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+          <span class="pipeline-step"><i class="fa-solid fa-folder-tree"></i> Context Collection</span>
+          <span class="pipeline-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+          <span class="pipeline-step"><i class="fa-solid fa-filter"></i> RTK Filter</span>
+          <span class="pipeline-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+          <span class="pipeline-step"><i class="fa-solid fa-compress"></i> Caveman Compress</span>
+          <span class="pipeline-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+          <span class="pipeline-step"><i class="fa-solid fa-robot"></i> LLM Response</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="file-chips" id="fileChips"></div>
+      <div class="input-row">
+        <textarea id="messageInput" placeholder="Type your message... (add files/folders with the upload buttons)" rows="1" onkeydown="handleInputKey(event)"></textarea>
+        <div class="input-actions">
+          <input type="file" id="fileInput" style="display:none" multiple onchange="handleFileSelect(event)">
+          <input type="file" id="folderInput" style="display:none" multiple webkitdirectory directory onchange="handleFileSelect(event)">
+          <button class="btn-secondary" onclick="triggerFileInput()" title="Add file(s)"><i class="fa-solid fa-file-arrow-up"></i></button>
+          <button class="btn-secondary" onclick="triggerFolderInput()" title="Add folder"><i class="fa-solid fa-folder-open"></i></button>
+          <button class="btn" id="sendBtn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Panel -->
+  <div class="stats-panel">
+    <h3>Token Savings</h3>
+    <div id="statsContent">
+      <div class="no-stats">
+        Send a message with file context to see token savings across the optimization pipeline.
+      </div>
+    </div>
+
+    <div class="tool-badges" id="toolBadges">
+      <span class="rtk-badge" id="rtkBadge">RTK: checking...</span>
+      <span class="caveman-badge">Caveman: active</span>
+    </div>
+    <div id="rtkInstallHelp" style="display:none; margin-top:12px; font-size:12px; color:var(--text-muted); line-height:1.6;">
+      RTK saves 60-90% on file context.<br>
+      Install: <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-size:11px;">brew install rtk</code><br>
+      <a href="https://github.com/rtk-ai/rtk" target="_blank" style="color:var(--accent);text-decoration:none;">github.com/rtk-ai/rtk</a>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Settings</h2>
+
+    <div class="section-divider">AI Provider</div>
+    <div class="form-group">
+      <label>Provider</label>
+      <select id="settProvider" onchange="onProviderChange()">
+        <option value="claude-cli">Claude CLI (uses existing login - no API key)</option>
+        <option value="claude">Claude API (requires API key)</option>
+        <option value="openai">OpenAI / ChatGPT</option>
+        <option value="gemini">Google Gemini</option>
+        <option value="custom">Custom (Ollama, LM Studio, etc.)</option>
+      </select>
+    </div>
+
+    <div id="cliNotice" style="display:none; background:#1a2a1a; border:1px solid #2a5a3a; border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:var(--green); line-height:1.5;">
+      Uses your existing <code style="background:var(--bg);padding:1px 4px;border-radius:3px;">claude</code> CLI authentication. No API key needed. Make sure you're logged in via <code style="background:var(--bg);padding:1px 4px;border-radius:3px;">claude login</code>.
+    </div>
+
+    <div id="apiKeyNotice" style="display:none; background:#2a1a1a; border:1px solid #5a3a2a; border-radius:6px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:var(--orange); line-height:1.5;">
+      Get your API key from your provider's dashboard.
+    </div>
+
+    <div class="form-group" id="apiKeyGroup">
+      <label id="apiKeyLabel">API Key</label>
+      <input type="password" id="settApiKey" placeholder="Enter API key">
+    </div>
+
+    <div class="form-group" id="modelGroup">
+      <label>Model</label>
+      <input type="text" id="settModel" placeholder="Model name">
+    </div>
+
+    <div class="form-group" id="customUrlGroup" style="display:none">
+      <label>Base URL</label>
+      <input type="text" id="settCustomUrl" placeholder="http://localhost:11434/v1">
+    </div>
+
+    <div class="section-divider">Optimization Pipeline</div>
+
+    <div class="toggle-row">
+      <label>RTK Filtering</label>
+      <label class="toggle">
+        <input type="checkbox" id="settRtk" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <label>Caveman Compression</label>
+      <label class="toggle">
+        <input type="checkbox" id="settCaveman" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <label>Prompt Optimizer</label>
+      <label class="toggle">
+        <input type="checkbox" id="settPromptOpt" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <label>Keep Context Between Messages</label>
+      <label class="toggle">
+        <input type="checkbox" id="settKeepContext">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label>Caveman Level</label>
+      <select id="settCavemanLevel">
+        <option value="lite">Lite - remove filler only</option>
+        <option value="full" selected>Full - drop articles, fragments OK</option>
+        <option value="ultra">Ultra - abbreviations, arrows</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- File Picker ---
+function triggerFileInput() {
+  document.getElementById('fileInput').click();
+}
+
+function triggerFolderInput() {
+  document.getElementById('folderInput').click();
+}
+
+async function handleFileSelect(e) {
+  const files = Array.from(e.target.files);
+  for (const file of files) {
+    const displayPath = file.webkitRelativePath || file.name;
+    try {
+      const content = await file.text();
+      const existing = state.uploadedFiles.findIndex((f) => f.path === displayPath);
+      if (existing >= 0) {
+        state.uploadedFiles[existing].content = content;
+      } else {
+        state.uploadedFiles.push({ path: displayPath, content });
+      }
+      if (!state.files.includes(displayPath)) {
+        state.files.push(displayPath);
+      }
+    } catch (err) {
+      console.error('Failed to read file:', displayPath, err);
+    }
+  }
+  renderFileChips();
+  // Reset input so selecting the same file again works
+  e.target.value = '';
+}
+// --- State ---
+const state = {
+  settings: {},
+  files: [],
+  serverPaths: [],
+  uploadedFiles: [],
+  streaming: false,
+};
+
+let pipelineFlowTimer = null;
+
+// --- Init ---
+async function init() {
+  try {
+    const [settResp, rtkResp] = await Promise.all([
+      fetch('/api/settings'),
+      fetch('/api/rtk-status'),
+    ]);
+    state.settings = await settResp.json();
+    const rtk = await rtkResp.json();
+
+    updateProviderBadge();
+    const rtkBadge = document.getElementById('rtkBadge');
+    const rtkHelp = document.getElementById('rtkInstallHelp');
+    if (rtk.available) {
+      rtkBadge.textContent = 'RTK: installed';
+    } else {
+      rtkBadge.textContent = 'RTK: not installed';
+      rtkBadge.style.background = '#3a2a1a';
+      rtkBadge.style.color = '#d29922';
+      rtkBadge.style.borderColor = '#5a3a2a';
+      rtkHelp.style.display = 'block';
+    }
+  } catch (e) {
+    console.error('Init error:', e);
+  }
+
+  autoResizeTextarea();
+  startPipelineFlowAnimation();
+}
+
+function startPipelineFlowAnimation() {
+  const steps = Array.from(document.querySelectorAll('.pipeline-step'));
+  if (!steps.length) return;
+
+  let activeIndex = 0;
+  const paint = () => {
+    steps.forEach((step, idx) => step.classList.toggle('active', idx === activeIndex));
+    activeIndex = (activeIndex + 1) % steps.length;
+  };
+
+  paint();
+  if (pipelineFlowTimer) clearInterval(pipelineFlowTimer);
+  pipelineFlowTimer = setInterval(paint, 900);
+}
+
+function updateProviderBadge() {
+  const s = state.settings;
+  const names = { 'claude-cli': 'Claude CLI', claude: 'Claude', openai: 'OpenAI', gemini: 'Gemini', custom: 'Custom' };
+  const models = { 'claude-cli': s.claude_model, claude: s.claude_model, openai: s.openai_model, gemini: s.gemini_model, custom: s.custom_model };
+  document.getElementById('providerName').textContent = `${names[s.llm_provider] || s.llm_provider} / ${models[s.llm_provider] || ''}`;
+}
+
+// --- Chat ---
+function handleInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResizeTextarea() {
+  const ta = document.getElementById('messageInput');
+  ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 150) + 'px';
+  });
+}
+
+// addFilePath is now replaced by file picker
+
+function removeFile(idx) {
+  const removed = state.files[idx];
+  state.files.splice(idx, 1);
+  state.uploadedFiles = state.uploadedFiles.filter((f) => f.path !== removed);
+  renderFileChips();
+}
+
+function clearAttachedContext() {
+  state.files = [];
+  state.serverPaths = [];
+  state.uploadedFiles = [];
+  renderFileChips();
+}
+
+function renderFileChips() {
+  const container = document.getElementById('fileChips');
+  container.innerHTML = state.files.map((f, i) =>
+    `<span class="file-chip">${escapeHtml(f)} <span class="remove" onclick="removeFile(${i})">x</span></span>`
+  ).join('');
+}
+
+function appendMessage(role, content) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  if (role === 'assistant') {
+    div.innerHTML = renderMarkdown(content);
+  } else {
+    div.textContent = content;
+  }
+  document.getElementById('messages').appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function appendStatus(text) {
+  const div = document.createElement('div');
+  div.className = 'message status';
+  div.textContent = text;
+  document.getElementById('messages').appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function scrollToBottom() {
+  const m = document.getElementById('messages');
+  m.scrollTop = m.scrollHeight;
+}
+
+async function sendMessage() {
+  if (state.streaming) return;
+
+  const input = document.getElementById('messageInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  state.streaming = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  appendMessage('user', message);
+  input.value = '';
+  input.style.height = 'auto';
+
+  const payload = {
+    message,
+    // Only explicit server-side paths should go here.
+    files: [...state.serverPaths],
+    uploaded_files: [...state.uploadedFiles],
+    caveman_level: state.settings.caveman_level,
+  };
+
+  let aiDiv = null;
+  let aiText = '';
+  let statusDiv = null;
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = parseSSE(buffer);
+      buffer = events.remainder;
+
+      for (const evt of events.parsed) {
+        switch (evt.event) {
+          case 'status':
+            if (statusDiv) statusDiv.remove();
+            statusDiv = appendStatus(evt.data.message);
+            break;
+
+          case 'token':
+            if (statusDiv) { statusDiv.remove(); statusDiv = null; }
+            if (!aiDiv) aiDiv = appendMessage('assistant', '');
+            aiText += evt.data.text;
+            aiDiv.innerHTML = renderMarkdown(aiText);
+            scrollToBottom();
+            break;
+
+          case 'warning':
+            appendStatus('Warning: ' + evt.data.message);
+            break;
+
+          case 'done':
+            if (statusDiv) { statusDiv.remove(); statusDiv = null; }
+            renderStats(evt.data);
+            break;
+
+          case 'error':
+            if (statusDiv) { statusDiv.remove(); statusDiv = null; }
+            const errDiv = document.createElement('div');
+            errDiv.className = 'message error';
+            errDiv.textContent = 'Error: ' + evt.data.message;
+            document.getElementById('messages').appendChild(errDiv);
+            break;
+        }
+      }
+    }
+  } catch (e) {
+    appendMessage('error', 'Connection error: ' + e.message);
+  }
+
+  // Attached files are one-shot by default; users can persist via settings.
+  if (!state.settings.keep_context_between_messages) {
+    clearAttachedContext();
+  }
+
+  state.streaming = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function parseSSE(buffer) {
+  const parsed = [];
+
+  // Normalize line endings: \r\n -> \n
+  buffer = buffer.replace(/\r\n/g, '\n');
+
+  // SSE blocks are separated by double newlines
+  const blocks = buffer.split('\n\n');
+  const remainder = blocks.pop(); // incomplete block stays in buffer
+
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+
+    let event = 'message';
+    let dataLines = [];
+
+    for (const line of block.split('\n')) {
+      const trimmed = line.trim();
+      // Skip SSE comments (ping/keepalive)
+      if (trimmed.startsWith(':')) continue;
+
+      if (trimmed.startsWith('event:')) {
+        event = trimmed.slice(6).trim();
+      } else if (trimmed.startsWith('data:')) {
+        dataLines.push(trimmed.slice(5).trim());
+      }
+    }
+
+    const data = dataLines.join('');
+    if (data) {
+      try {
+        parsed.push({ event, data: JSON.parse(data) });
+      } catch (e) {
+        parsed.push({ event, data: { text: data } });
+      }
+    }
+  }
+
+  return { parsed, remainder };
+}
+
+// --- Stats ---
+function percentReduction(before, after) {
+  if (!before || before <= 0) return 0;
+  const pct = Math.round(((before - after) / before) * 100);
+  return Math.max(0, pct);
+}
+
+function renderStats(data) {
+  const stats = data.stats;
+  const usage = data.usage || {};
+  const stageInfo = data.stage_info || {};
+  const promptStats = data.prompt_stats || {};
+  const container = document.getElementById('statsContent');
+
+  if (!stats || stats.original_tokens === 0) {
+    container.innerHTML = `
+      <div class="stat-row">
+        <span class="stat-label">Provider</span>
+        <span class="stat-value">${escapeHtml(data.provider || '')} / ${escapeHtml(data.model || '')}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Input tokens</span>
+        <span class="stat-value tokens">${(usage.input_tokens || 0).toLocaleString()}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Output tokens</span>
+        <span class="stat-value tokens">${(usage.output_tokens || 0).toLocaleString()}</span>
+      </div>
+      <div class="no-stats" style="padding:20px 0">Add file paths for context optimization stats.</div>
+    `;
+    return;
+  }
+
+  const savingsPercent = stats.savings_percent || 0;
+  const tokensSaved = Math.max((stats.original_tokens || 0) - (stats.final_tokens || 0), 0);
+  const barWidth = Math.min(savingsPercent, 100);
+  const rtkReduction = percentReduction(stats.original_tokens, stats.after_rtk_tokens);
+  const cavemanReduction = percentReduction(stats.after_rtk_tokens, stats.after_caveman_tokens);
+  const promptBefore = promptStats.original_tokens || 0;
+  const promptAfter = promptStats.optimized_tokens || promptBefore;
+  const promptDelta = (promptStats.tokens_delta !== undefined) ? promptStats.tokens_delta : (promptAfter - promptBefore);
+
+  let diagnostics = '';
+  if (tokensSaved === 0) {
+    if (stageInfo.rtk_enabled && !stageInfo.rtk_available) {
+      diagnostics = 'No reduction yet: RTK is enabled but not installed/available on server.';
+    } else if (!stageInfo.rtk_enabled && !stageInfo.caveman_enabled) {
+      diagnostics = 'No reduction yet: both RTK and Caveman are disabled in settings.';
+    } else {
+      diagnostics = 'No reduction for this input: content may already be compact or mostly non-compressible.';
+    }
+  }
+
+  container.innerHTML = `
+    <div class="savings-bar">
+      <div class="savings-bar-fill" style="width:${barWidth}%"></div>
+      <div class="savings-bar-label">${savingsPercent}% saved (${tokensSaved.toLocaleString()} tokens)</div>
+    </div>
+
+    <div class="pipeline-stats">
+      <div class="pipeline-stat">
+        <span class="pipeline-dot" style="background:var(--text-muted)"></span>
+        <span class="label">Original context</span>
+        <span class="value">${stats.original_tokens.toLocaleString()}</span>
+      </div>
+      <div class="pipeline-stat">
+        <span class="pipeline-dot" style="background:var(--green)"></span>
+        <span class="label">After RTK</span>
+        <span class="value">${stats.after_rtk_tokens.toLocaleString()}
+          ${stats.original_tokens > 0 ? `<span style="color:var(--green);font-size:11px"> -${rtkReduction}%</span>` : ''}
+        </span>
+      </div>
+      <div class="pipeline-stat">
+        <span class="pipeline-dot" style="background:var(--orange)"></span>
+        <span class="label">After Caveman</span>
+        <span class="value">${stats.after_caveman_tokens.toLocaleString()}
+          ${stats.after_rtk_tokens > 0 ? `<span style="color:var(--orange);font-size:11px"> -${cavemanReduction}%</span>` : ''}
+        </span>
+      </div>
+    </div>
+
+    ${diagnostics ? `<div class="no-stats" style="padding:14px 0 0; text-align:left;">${escapeHtml(diagnostics)}</div>` : ''}
+
+    <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px">
+      <div class="stat-row">
+        <span class="stat-label">Tokens saved</span>
+        <span class="stat-value savings">${tokensSaved.toLocaleString()}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Prompt tokens</span>
+        <span class="stat-value">${promptBefore.toLocaleString()} → ${promptAfter.toLocaleString()} (${promptDelta >= 0 ? '+' : ''}${promptDelta})</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Provider</span>
+        <span class="stat-value">${escapeHtml(data.provider || '')}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Model</span>
+        <span class="stat-value">${escapeHtml(data.model || '')}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Input tokens</span>
+        <span class="stat-value tokens">${(usage.input_tokens || 0).toLocaleString()}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Output tokens</span>
+        <span class="stat-value tokens">${(usage.output_tokens || 0).toLocaleString()}</span>
+      </div>
+    </div>
+  `;
+}
+
+// --- Settings ---
+function openSettings() {
+  const s = state.settings;
+  document.getElementById('settProvider').value = s.llm_provider;
+  document.getElementById('settRtk').checked = s.rtk_enabled;
+  document.getElementById('settCaveman').checked = s.caveman_enabled;
+  document.getElementById('settPromptOpt').checked = s.prompt_opt_enabled !== false;
+  document.getElementById('settKeepContext').checked = s.keep_context_between_messages === true;
+  document.getElementById('settCavemanLevel').value = s.caveman_level;
+  onProviderChange();
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function onProviderChange() {
+  const provider = document.getElementById('settProvider').value;
+  const s = state.settings;
+  const isCli = provider === 'claude-cli';
+
+  const keyLabels = { 'claude-cli': '', claude: 'Anthropic API Key', openai: 'OpenAI API Key', gemini: 'Gemini API Key', custom: 'API Key (optional)' };
+  const models = { 'claude-cli': s.claude_model || 'claude-sonnet-4-5', claude: s.claude_model || 'claude-sonnet-4-5', openai: s.openai_model || 'gpt-4o', gemini: s.gemini_model || 'gemini-2.5-flash', custom: s.custom_model || 'llama3' };
+  const hasKey = { 'claude-cli': true, claude: s.has_anthropic_key, openai: s.has_openai_key, gemini: s.has_gemini_key, custom: s.has_custom_key };
+
+  // Show/hide API key field
+  document.getElementById('apiKeyGroup').style.display = isCli ? 'none' : '';
+  document.getElementById('cliNotice').style.display = isCli ? 'block' : 'none';
+  document.getElementById('apiKeyNotice').style.display = (!isCli && !hasKey[provider]) ? 'block' : 'none';
+
+  if (!isCli) {
+    document.getElementById('apiKeyLabel').textContent = keyLabels[provider];
+    document.getElementById('settApiKey').placeholder = hasKey[provider] ? '(key set - leave blank to keep)' : 'Enter API key';
+  }
+
+  document.getElementById('settModel').value = models[provider];
+  document.getElementById('customUrlGroup').style.display = provider === 'custom' ? '' : 'none';
+  if (provider === 'custom') {
+    document.getElementById('settCustomUrl').value = s.custom_base_url || 'http://localhost:11434/v1';
+  }
+}
+
+async function saveSettings() {
+  const provider = document.getElementById('settProvider').value;
+  const apiKey = document.getElementById('settApiKey').value.trim();
+  const model = document.getElementById('settModel').value.trim();
+
+  const payload = {
+    llm_provider: provider,
+    rtk_enabled: document.getElementById('settRtk').checked,
+    caveman_enabled: document.getElementById('settCaveman').checked,
+    prompt_opt_enabled: document.getElementById('settPromptOpt').checked,
+    keep_context_between_messages: document.getElementById('settKeepContext').checked,
+    caveman_level: document.getElementById('settCavemanLevel').value,
+  };
+
+  // Set model for the selected provider
+  const modelKeys = { 'claude-cli': 'claude_model', claude: 'claude_model', openai: 'openai_model', gemini: 'gemini_model', custom: 'custom_model' };
+  if (model) payload[modelKeys[provider]] = model;
+
+  // Set API key if provided (not needed for claude-cli)
+  if (apiKey && provider !== 'claude-cli') {
+    const keyMap = { claude: 'anthropic_api_key', openai: 'openai_api_key', gemini: 'gemini_api_key', custom: 'custom_api_key' };
+    payload[keyMap[provider]] = apiKey;
+  }
+
+  if (provider === 'custom') {
+    const url = document.getElementById('settCustomUrl').value.trim();
+    if (url) payload.custom_base_url = url;
+  }
+
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    // Reload settings
+    const resp = await fetch('/api/settings');
+    state.settings = await resp.json();
+    updateProviderBadge();
+    closeSettings();
+  } catch (e) {
+    alert('Failed to save settings: ' + e.message);
+  }
+}
+
+// --- Markdown ---
+function renderMarkdown(text) {
+  // Fenced code blocks
+  text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code class="language-${lang}">${escapeHtml(code.trimEnd())}</code></pre>`
+  );
+  // Inline code
+  text = text.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Headings
+  text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Unordered lists
+  text = text.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+  text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  // Ordered lists
+  text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Paragraphs
+  text = text.replace(/\n{2,}/g, '</p><p>');
+  text = text.replace(/\n/g, '<br>');
+  if (!text.startsWith('<')) text = '<p>' + text + '</p>';
+
+  return text;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// --- Start ---
+init();
+</script>
+</body>
+</html>
