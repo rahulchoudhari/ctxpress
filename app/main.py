@@ -113,9 +113,13 @@ async def chat(request: Request):
     async def event_generator():
         stats = {
             "original_tokens": 0,
+            "original_code_tokens": 0,
+            "original_prose_tokens": 0,
             "after_rtk_tokens": 0,
             "after_caveman_tokens": 0,
             "final_tokens": 0,
+            "final_code_tokens": 0,
+            "final_prose_tokens": 0,
             "savings_percent": 0.0,
         }
         stage_info = {
@@ -156,6 +160,8 @@ async def chat(request: Request):
                         yield {"event": "warning", "data": json.dumps({"message": warning})}
 
                 stats["original_tokens"] = sum(count_tokens(i.content) for i in items if i.content)
+                stats["original_code_tokens"] = sum(count_tokens(i.content) for i in items if i.content and i.is_code)
+                stats["original_prose_tokens"] = sum(count_tokens(i.content) for i in items if i.content and not i.is_code)
 
             # Phase 2: RTK filtering
             if items and use_rtk:
@@ -177,6 +183,8 @@ async def chat(request: Request):
                 stats["after_caveman_tokens"] = stats["after_rtk_tokens"]
 
             stats["final_tokens"] = stats["after_caveman_tokens"]
+            stats["final_code_tokens"] = sum(count_tokens(i.content) for i in items if i.content and i.is_code)
+            stats["final_prose_tokens"] = sum(count_tokens(i.content) for i in items if i.content and not i.is_code)
             if stats["original_tokens"] > 0:
                 saved = stats["original_tokens"] - stats["final_tokens"]
                 stats["savings_percent"] = round((saved / stats["original_tokens"]) * 100, 1)

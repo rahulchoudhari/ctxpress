@@ -32,6 +32,16 @@ cd ctxpress
 ./run.sh      # Starts server at http://127.0.0.1:8765
 ```
 
+## Screenshots
+
+### Home
+
+![Token Optimizer Home](app/Screenshot/TokenOptimizerHomePage.png)
+
+### Settings
+
+![Token Optimizer Settings](app/Screenshot/TokenOptimizerSettings.png)
+
 ### Prerequisites
 
 - Python 3.9+
@@ -73,6 +83,81 @@ It will:
    - **Ultra**: + abbreviations (`database` → `DB`, `authentication` → `auth`) and arrow notation
 4. **Prompt Optimizer** — Normalizes user prompt, detects intent, and appends a compact output contract (toggleable)
 5. **LLM Call** — Sends optimized context + (optionally) optimized prompt to your chosen provider with SSE streaming
+
+## Concrete Demo (Real Savings)
+
+Use this exact demo to produce visible token reduction in the dashboard.
+
+### 1) Use the included demo file
+
+This repository now includes `demo/demo.txt` with repetitive, filler-heavy prose for compression testing.
+
+You can use it directly, or replace it with your own prose-heavy content.
+
+```text
+Hi team, I would just basically like to explain that we are really quite excited about this initiative.
+In order to move forward, we would need to first of all make sure that everyone is aligned.
+It is important to note that at this point in time we are actually facing a number of process challenges.
+With regard to onboarding, we may want to consider creating documentation, and in addition to that,
+we might want to consider adding a checklist. Due to the fact that communication is inconsistent,
+we are not able to ship quickly. I think we should basically just try to improve collaboration.
+
+Hi team, I would just basically like to explain that we are really quite excited about this initiative.
+In order to move forward, we would need to first of all make sure that everyone is aligned.
+It is important to note that at this point in time we are actually facing a number of process challenges.
+With regard to onboarding, we may want to consider creating documentation, and in addition to that,
+we might want to consider adding a checklist. Due to the fact that communication is inconsistent,
+we are not able to ship quickly. I think we should basically just try to improve collaboration.
+
+Hi team, I would just basically like to explain that we are really quite excited about this initiative.
+In order to move forward, we would need to first of all make sure that everyone is aligned.
+It is important to note that at this point in time we are actually facing a number of process challenges.
+With regard to onboarding, we may want to consider creating documentation, and in addition to that,
+we might want to consider adding a checklist. Due to the fact that communication is inconsistent,
+we are not able to ship quickly. I think we should basically just try to improve collaboration.
+```
+
+### 2) Configure settings for maximum visible compression
+
+- `RTK Enabled`: ON
+- `Caveman Enabled`: ON
+- `Caveman Level`: `ultra`
+- `Prompt Optimizer`: ON (optional for context savings, useful for prompt shaping)
+
+### 3) Attach `demo/demo.txt` and send this prompt
+
+```text
+Summarize the top 5 risks and provide a concrete 7-step action plan with owners and milestones.
+```
+
+### 4) What you should see
+
+- `After Caveman` should be clearly lower than `Original context`
+- `Tokens saved` should be non-zero (typically noticeable on prose-heavy input)
+- If RTK is installed and input is noisy/redundant, `After RTK` may also drop
+
+### Optional: RTK-heavy demo (directory)
+
+To showcase RTK savings, attach a folder containing many repetitive logs/notes/config dumps.
+RTK shines most on noisy, duplicated, or overly verbose context sources.
+
+### Cost interpretation
+
+Approximate input cost impact:
+
+$$
+	ext{Cost Saved} \approx \frac{\text{Tokens Saved}}{1{,}000{,}000} \times \text{Provider Input Price per 1M tokens}
+$$
+
+Example:
+
+- If you save `20,000` tokens per request and your model input price is `$3 / 1M`:
+
+$$
+\frac{20{,}000}{1{,}000{,}000} \times 3 = 0.06
+$$
+
+You save about `$0.06` per request.
 
 ### UI Upload Behavior
 
@@ -149,7 +234,12 @@ ctxpress/
 ├── run.sh                    # Start server
 ├── requirements.txt
 ├── .env.example
+├── demo/
+│   └── demo.txt              # Sample prose-heavy file for savings demo
 ├── app/
+│   ├── Screenshot/
+│   │   ├── TokenOptimizerHomePage.png
+│   │   └── TokenOptimizerSettings.png
 │   ├── main.py               # FastAPI + SSE chat endpoint
 │   ├── config.py             # Pydantic settings
 │   ├── models.py             # Request/response models

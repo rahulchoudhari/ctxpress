@@ -1079,6 +1079,10 @@ function renderStats(data) {
   const barWidth = Math.min(savingsPercent, 100);
   const rtkReduction = percentReduction(stats.original_tokens, stats.after_rtk_tokens);
   const cavemanReduction = percentReduction(stats.after_rtk_tokens, stats.after_caveman_tokens);
+  const originalCodeTokens = stats.original_code_tokens || 0;
+  const originalProseTokens = stats.original_prose_tokens || 0;
+  const finalCodeTokens = stats.final_code_tokens || 0;
+  const finalProseTokens = stats.final_prose_tokens || 0;
   const promptBefore = promptStats.original_tokens || 0;
   const promptAfter = promptStats.optimized_tokens || promptBefore;
   const promptDelta = (promptStats.tokens_delta !== undefined) ? promptStats.tokens_delta : (promptAfter - promptBefore);
@@ -1087,6 +1091,8 @@ function renderStats(data) {
   if (tokensSaved === 0) {
     if (stageInfo.rtk_enabled && !stageInfo.rtk_available) {
       diagnostics = 'No reduction yet: RTK is enabled but not installed/available on server.';
+    } else if (originalProseTokens < 80 && originalCodeTokens > 0) {
+      diagnostics = 'No reduction yet: context is mostly code/structured content; caveman mainly compresses prose.';
     } else if (!stageInfo.rtk_enabled && !stageInfo.caveman_enabled) {
       diagnostics = 'No reduction yet: both RTK and Caveman are disabled in settings.';
     } else {
@@ -1128,6 +1134,14 @@ function renderStats(data) {
       <div class="stat-row">
         <span class="stat-label">Tokens saved</span>
         <span class="stat-value savings">${tokensSaved.toLocaleString()}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Code tokens</span>
+        <span class="stat-value">${originalCodeTokens.toLocaleString()} → ${finalCodeTokens.toLocaleString()}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Prose tokens</span>
+        <span class="stat-value">${originalProseTokens.toLocaleString()} → ${finalProseTokens.toLocaleString()}</span>
       </div>
       <div class="stat-row">
         <span class="stat-label">Prompt tokens</span>
