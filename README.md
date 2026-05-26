@@ -3,7 +3,7 @@
 **High-performance LLM token optimizer — compress context before it hits your wallet.**
 
 ```
-User Request → Context Collection → RTK Filter → Caveman Compress → LLM API Call
+User Request → Context Collection → RTK Filter → Caveman Compress → Prompt Optimizer → LLM API Call
                                      (-60-90%)      (-25-55%)
 ```
 
@@ -11,19 +11,22 @@ ctxpress is a self-hosted single-page application that reduces LLM token costs b
 
 ## Features
 
-- **Multi-provider support** — Claude, OpenAI/ChatGPT, Google Gemini, or any OpenAI-compatible endpoint (Ollama, LM Studio, Azure)
+- **Multi-provider support** — Claude CLI, Claude API, OpenAI/ChatGPT, Google Gemini, or any OpenAI-compatible endpoint (Ollama, LM Studio, Azure)
 - **RTK integration** — Shells out to `rtk` CLI for 60-90% token savings on file/directory context
 - **Caveman compression** — Pure regex/rule-based text compression (3 levels: lite, full, ultra) with 25-55% savings on prose
+- **Prompt Optimizer** — Rule-based prompt cleanup + intent-aware output contract before provider call
 - **Code-aware** — Only compresses natural language; code blocks, URLs, file paths, and technical terms are preserved exactly
-- **Real-time dashboard** — See token savings at each pipeline stage as you chat
+- **Real-time dashboard** — See context savings + prompt token delta as you chat
 - **SSE streaming** — Responses stream in real-time from your chosen LLM
+- **Browser uploads** — Attach files or folders directly from the UI (content is sent, no local path typing required)
+- **Context persistence control** — Keep attached context between messages or use one-shot context (default)
 - **Zero framework frontend** — Single HTML file, no build step, dark theme
 - **Security guards** — Skips `.env`, credentials, SSH keys, and other sensitive files automatically
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ctxpress.git
+git clone https://github.com/rahulchoudhari/ctxpress.git
 cd ctxpress
 ./setup.sh    # Creates venv, installs deps, configures provider + API key
 ./run.sh      # Starts server at http://127.0.0.1:8765
@@ -57,18 +60,26 @@ It will:
 
 ```
 ┌──────────────┐    ┌───────────────────┐    ┌────────────┐    ┌──────────────────┐    ┌──────────┐
-│ User Request │───>│ Context Collection │───>│ RTK Filter │───>│ Caveman Compress │───>│ LLM Call │
-│              │    │ Read files, dirs   │    │ -60-90%    │    │ -25-55%          │    │ Stream   │
-└──────────────┘    └───────────────────┘    └────────────┘    └──────────────────┘    └──────────┘
+│ User Request │───>│ Context Collection │───>│ RTK Filter │───>│ Caveman Compress │───>│ Prompt Opt │───>│ LLM Call │
+│              │    │ Read files/dirs    │    │ -60-90%    │    │ -25-55%          │    │ Rule-based │    │ Stream   │
+└──────────────┘    └───────────────────┘    └────────────┘    └──────────────────┘    └────────────┘    └──────────┘
 ```
 
-1. **Context Collection** — Reads files/directories you specify, classifies them as code or prose, skips sensitive files
+1. **Context Collection** — Reads files/directories you specify or browser-uploaded file/folder content, classifies them as code/prose, skips sensitive files
 2. **RTK Filter** — Runs `rtk read` on each file via subprocess for smart filtering (grouping, deduplication, truncation). Falls back gracefully if RTK isn't installed
 3. **Caveman Compress** — Applies rule-based text compression to prose content:
    - **Lite**: Removes filler words, hedging, pleasantries, collapses redundant phrases
    - **Full**: + removes articles, leading phrases, enables fragment-style output
    - **Ultra**: + abbreviations (`database` → `DB`, `authentication` → `auth`) and arrow notation
-4. **LLM Call** — Sends the optimized prompt to your chosen provider with SSE streaming
+4. **Prompt Optimizer** — Normalizes user prompt, detects intent, and appends a compact output contract (toggleable)
+5. **LLM Call** — Sends optimized context + (optionally) optimized prompt to your chosen provider with SSE streaming
+
+### UI Upload Behavior
+
+- Use the file/folder buttons near the chat box to attach local files/folders.
+- Uploaded items are sent as content payloads (not server filesystem paths).
+- By default attachments are one-shot and cleared after each message.
+- Enable **Keep Context Between Messages** in Settings to persist attachments across turns.
 
 ### Compression Example
 
@@ -87,6 +98,7 @@ Code blocks, inline code, URLs, and file paths are **never modified**.
 
 | Provider | SDK | Default Model |
 |----------|-----|---------------|
+| Claude CLI | `claude` CLI | `claude-sonnet-4-5` |
 | Claude | `anthropic` | `claude-sonnet-4-5` |
 | OpenAI / ChatGPT | `openai` | `gpt-4o` |
 | Google Gemini | `google-genai` | `gemini-2.5-flash` |
@@ -99,8 +111,8 @@ Switch providers anytime via the Settings modal in the UI or by editing `.env`.
 All settings live in `.env` (created by `setup.sh`):
 
 ```env
-# Provider: claude | openai | gemini | custom
-LLM_PROVIDER=claude
+# Provider: claude-cli | claude | openai | gemini | custom
+LLM_PROVIDER=claude-cli
 
 # API Keys
 ANTHROPIC_API_KEY=sk-ant-...
@@ -121,6 +133,12 @@ RTK_ENABLED=true
 RTK_LEVEL=default
 CAVEMAN_ENABLED=true
 CAVEMAN_LEVEL=full    # lite | full | ultra
+
+# Prompt optimizer
+PROMPT_OPT_ENABLED=true
+
+# Attachment behavior in chat UI
+KEEP_CONTEXT_BETWEEN_MESSAGES=false
 ```
 
 ## Project Structure
@@ -141,9 +159,11 @@ ctxpress/
 │       ├── context.py        # File reading + classification
 │       ├── rtk_filter.py     # Async RTK subprocess integration
 │       ├── caveman.py        # Rule-based text compression
+│       ├── prompt_opt.py     # Rule-based prompt optimization
 │       ├── tokencount.py     # tiktoken-based counting
 │       └── llm/
 │           ├── base.py       # Abstract provider interface
+│           ├── claude_cli_provider.py
 │           ├── claude_provider.py
 │           ├── openai_provider.py
 │           ├── gemini_provider.py
